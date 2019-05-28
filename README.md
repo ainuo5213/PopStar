@@ -3,7 +3,7 @@
 ````javascript
 new PopStar()
 ````
-游戏截图如下
+游戏截图如下  
 ![avatar](./img/gameShut.png)  
 游戏可通过以下全局配置进行自定义
 ````javascript
