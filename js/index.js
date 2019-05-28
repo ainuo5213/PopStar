@@ -1,26 +1,28 @@
 (function () {
+    //全局配置
     let config = {
         squareWidth: 40,
-        squareHeight: 40,
-        squareSet: [],
-        tableRows: 10,
-        baseScore: 5,
-        stepScore: 10,
-        targetScore: 2000,
+        squareHeight: 40,//小星星的宽高
+        squareSet: [],//存储小星星的二维数组
+        tableRows: 10,//行数
+        baseScore: 5,//每一个小星星的基础分数
+        stepScore: 10,//每一个小星星的递增分数
+        targetScore: 2000,//目标分数，初始为2000
         el: document.getElementsByClassName('pop_star')[0]
     };
-
+    //全局计算属性
     let computed = {
-        flag: true,
-        choose: [],
+        flag: true,//锁
+        choose: [],//已选中的小星星集合
         timer: null,
-        totalScore: 0,
+        totalScore: 0,//总分数
         tempSquare: null,
-        level: 1,
-        stepTargetScore: 1000,
-        score: 0
+        level: 1,//当前所在的关数（每闯过一关+1，游戏失败回复为1）
+        stepTargetScore: 1000,//闯关成功的递增分数（1000/关）
+        score: 0//当前的计算分数
     };
 
+    //Block对象
     function Block(bg, row, col) {
         let width = config.squareWidth,
             height = config.squareHeight,
@@ -37,18 +39,45 @@
         return div;
     }
 
+    //入口函数
     function PopStar() {
         return new PopStar.prototype.init();
     }
 
+    //PopStar原型
     PopStar.prototype = {
+        /**
+         * PopStar的入口函数
+         */
         init: function () {
             this.initTable();
         },
+        /**
+         * 初始化操作
+         */
         initTable: function () {
+            this.initTableWidth();
+            this.initScore();
             this.initSquareSet();
             this.initBlocks();
         },
+
+        initTableWidth: function () {
+            let el = config.el;
+            el.style.width = config.tableRows * config.squareWidth + 'px'
+        },
+        /**
+         * 初始化当前分数和目标
+         */
+        initScore: function () {
+            let tarScore = document.getElementsByClassName('target_score')[0];
+            tarScore.innerHTML = '目标分数：' + config.targetScore;
+            let curScore = document.getElementsByClassName('current_score')[0];
+            curScore.innerHTML = '当前分数：' + computed.totalScore;
+        },
+        /**
+         * 点击事件操作
+         */
         mouseClick: function () {
             let squareSet = config.squareSet,
                 choose = computed.choose,
@@ -81,11 +110,19 @@
                 setTimeout(function () {
                     let is = self.isFinish();
                     if (is) {
+                        self.clear();
                         if (computed.totalScore >= config.targetScore) {
                             alert("恭喜获胜");
+                            config.targetScore += computed.level * computed.stepTargetScore;
+                            computed.level++;
                         } else {
                             alert("游戏失败");
+                            config.targetScore = 2000;
+                            computed.level = 0;
+                            computed.totalScore = 0;
                         }
+                        computed.flag = true;
+                        new PopStar();
                     } else {
                         choose = [];
                         computed.flag = true;//在所有动作都执行完成之后释放锁
@@ -94,6 +131,26 @@
                 }, 300 + choose.length * 150);
             }, choose.length * 100);
         },
+        /**
+         * 闯关成功或失败清除（清除二维数组和el的子节点）操作
+         */
+        clear: function () {
+            let squareSet = config.squareSet, rows = squareSet.length, el = config.el;
+            for (let i = 0; i < rows; i++) {
+                let row = squareSet[i].length;
+                for (let j = 0; j < row; j++) {
+                    if (squareSet[i][j] === null) {
+                        continue;
+                    }
+                    el.removeChild(squareSet[i][j]);
+                    squareSet[i][j] = null;
+                }
+            }
+        },
+        /**
+         * 是否游戏结束
+         * @returns {boolean}
+         */
         isFinish: function () {
             let squareSet = config.squareSet, rows = squareSet.length;
             for (let i = 0; i < rows; i++) {
@@ -108,6 +165,9 @@
             }
             return true;
         },
+        /**
+         * 消除星星后的移动操作
+         */
         move: function () {
             let width = config.tableRows, squareSet = config.squareSet;
             //向下移动
@@ -136,7 +196,10 @@
             }
             this.refresh()
         },
-
+        /**
+         * 鼠标移入时的闪烁操作
+         * @param obj
+         */
         mouseOver: function (obj) {
             if (!computed.flag) {//处于锁定状态不允许有操作
                 computed.tempSquare = obj;
@@ -153,7 +216,10 @@
             this.flicker(choose);
             this.computeScore(choose);
         },
-
+        /**
+         * 计算已选中的星星分数
+         * @param arr
+         */
         computeScore: function (arr) {
             let score = 0,
                 len = arr.length,
@@ -175,6 +241,9 @@
                 selectScore.style.transition = 'opacity 1s';
             }, 1000)
         },
+        /**
+         * 鼠标移出时的消除星星闪烁的操作
+         */
         clearFlicker: function () {
             let timer = computed.timer,
                 squareSet = config.squareSet,
@@ -194,7 +263,10 @@
                 }
             }
         },
-
+        /**
+         * 星星闪烁
+         * @param arr
+         */
         flicker: function (arr) {
             let len = arr.length, num = 0;
             computed.timer = setInterval(function () {
@@ -206,7 +278,11 @@
                 num++;
             }, 300)
         },
-
+        /**
+         * 检查鼠标移入的这个星星是否有相连着的相同的星星，
+         * @param obj star
+         * @param arr choose
+         */
         checkLink: function (obj, arr) {
             if (obj === null) {
                 return;
@@ -233,6 +309,9 @@
                 this.checkLink(squareSet[obj.row - 1][obj.col], arr);
             }
         },
+        /**
+         * 初始化二维数组
+         */
         initSquareSet: function () {
             let rows = config.tableRows, arr = config.squareSet;
             for (let i = 0; i < rows; i++) {
@@ -242,6 +321,9 @@
                 }
             }
         },
+        /**
+         * 初始化el的子节点
+         */
         initBlocks: function () {
             let squareSet = config.squareSet,
                 self = this,
@@ -263,6 +345,9 @@
             }
             this.refresh()
         },
+        /**
+         * 渲染el的子节点
+         */
         refresh: function () {
             let squareSet = config.squareSet, rows = squareSet.length,
                 width = config.squareWidth,
@@ -285,6 +370,13 @@
                 }
             }
         },
+        /**
+         * 创建星星子节点的函数
+         * @param prefix
+         * @param row
+         * @param col
+         * @returns {HTMLElement}
+         */
         createBlock: function (prefix, row, col) {
             return new Block(prefix, row, col);
         }
